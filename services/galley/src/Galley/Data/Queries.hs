@@ -5,6 +5,7 @@
 
 module Galley.Data.Queries where
 
+import Brig.Types.Common
 import Cassandra
 import Data.Functor.Identity
 import Data.Id
@@ -88,6 +89,15 @@ updateTeamIcon = "update team set icon = ? where team = ?"
 
 updateTeamIconKey :: PrepQuery W (Text, TeamId) ()
 updateTeamIconKey = "update team set icon_key = ? where team = ?"
+
+insertTeamBilling :: PrepQuery W (TeamId, Email) ()
+insertTeamBilling = "insert into team_billing (team, email) values (?, ?)"
+
+deleteTeamBilling :: PrepQuery W (Identity TeamId) ()
+deleteTeamBilling = "delete from team_billing where team = ?"
+
+selectTeamBilling :: PrepQuery R (Identity TeamId) (Identity (Maybe Email))
+selectTeamBilling = "select email from team_billing where team = ?"
 
 -- Conversations ------------------------------------------------------------
 

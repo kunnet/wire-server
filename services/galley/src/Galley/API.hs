@@ -298,6 +298,22 @@ sitemap = do
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied DeleteConversation)
 
+
+    get "/teams/:tid/billing" (continue getBilling) $
+        zauthUserId
+        .&. capture "tid"
+        .&. accept "application" "json"
+
+    -- TODO swagger
+
+    put "/teams/:tid/billing" (continue updateBilling) $
+        zauthUserId
+        .&. capture "tid"
+        .&. request
+        .&. accept "application" "json"
+
+    -- TODO swagger
+
    --
 
     get "/bot/conversation" (continue getBotConversation) $

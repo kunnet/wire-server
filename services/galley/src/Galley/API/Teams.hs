@@ -21,8 +21,11 @@ module Galley.API.Teams
     , uncheckedAddTeamMember
     , uncheckedGetTeamMember
     , uncheckedRemoveTeamMember
+    , getBilling
+    , updateBilling
     ) where
 
+import Brig.Types.Common (Email)
 import Cassandra (result, hasMore)
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Lens
@@ -263,6 +266,22 @@ deleteTeamConversation (zusr::: zcon ::: tid ::: cid ::: _) = do
         (m:mm) -> pushSome [p, newPush1 zusr (ConvEvent ce) (list1 m mm) & pushConn .~ Just zcon]
     Data.removeTeamConv tid cid
     pure empty
+
+-- TODO
+getBilling :: UserId ::: TeamId ::: JSON -> Galley Response
+getBilling (zusr ::: tid ::: _) = do
+    membs <- Data.teamMembers tid
+    void $ permissionCheck zusr GetBilling membs
+--    Data.selectTeamBilling tid
+    undefined
+
+updateBilling :: UserId ::: TeamId ::: JSON -> Galley Response
+updateBilling (zusr ::: tid ::: req) = do
+    body <- fromBody req invalidPayload
+    membs <- Data.teamMembers tid
+    void $ permissionCheck zusr SetBilling membs
+--    Data.insertTeamBilling tid body^.billingEmail
+    undefined
 
 -- Internal -----------------------------------------------------------------
 

@@ -23,6 +23,7 @@ library
         Galley.Types.Swagger
         Galley.Types.Teams
         Galley.Types.Teams.Swagger
+        Galley.Types.Teams.Queues
 
     build-depends:
         aeson                 >= 0.6
