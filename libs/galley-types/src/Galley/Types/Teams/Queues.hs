@@ -23,7 +23,7 @@ module Galley.Types.Teams.Queues
 
     ) where
 
-import Brig.Types.Common
+import Data.Misc (Email)
 import Control.Lens (makeLenses)
 import Control.Monad (when)
 import Data.Aeson

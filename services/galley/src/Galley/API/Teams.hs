@@ -25,7 +25,7 @@ module Galley.API.Teams
     , updateBilling
     ) where
 
-import Brig.Types.Common (Email)
+import Data.Misc (Email)
 import Cassandra (result, hasMore)
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Lens

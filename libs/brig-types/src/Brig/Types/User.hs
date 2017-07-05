@@ -18,6 +18,7 @@ import Data.ByteString.Conversion
 import Data.Id
 import Data.Json.Util ((#))
 import Data.Maybe (isJust)
+import Data.Misc (Email)
 import Data.Range
 import Data.Text (Text)
 import Data.Text.Ascii

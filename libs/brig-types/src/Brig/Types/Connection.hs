@@ -15,6 +15,7 @@ import Data.Attoparsec.ByteString (takeByteString)
 import Data.ByteString.Conversion
 import Data.Id
 import Data.Json.Util
+import Data.Misc (Email)
 import Data.Monoid ((<>))
 import Data.Range
 import Data.Text (Text, pack, toLower)

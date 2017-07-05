@@ -5,7 +5,6 @@
 
 module Galley.Data.Queries where
 
-import Brig.Types.Common
 import Cassandra
 import Data.Functor.Identity
 import Data.Id

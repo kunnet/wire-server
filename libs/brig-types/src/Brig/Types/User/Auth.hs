@@ -10,6 +10,7 @@ import Control.Applicative
 import Data.Aeson
 import Data.ByteString.Conversion
 import Data.ByteString.Lazy (ByteString)
+import Data.Misc (Email)
 import Data.String (IsString)
 import Data.Text (Text)
 import Data.Id (UserId)

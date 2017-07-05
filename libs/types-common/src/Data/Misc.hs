@@ -17,6 +17,10 @@ module Data.Misc
     , Latitude  (..)
     , Longitude (..)
 
+      -- * Email
+    , Email (..)
+    , fromEmail
+
       -- * HttpsUrl
     , HttpsUrl (..)
 
@@ -34,7 +38,9 @@ import Data.ByteString.Char8 (unpack)
 import Data.ByteString.Conversion
 import Data.Char (isSpace)
 import Data.IP (IP)
+import Data.Monoid
 import Safe (readMay)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Word
 #ifdef WITH_CQL
@@ -138,6 +144,52 @@ instance Cql Longitude where
 
     fromCql (CqlDouble x) = return (Longitude x)
     fromCql _             = fail "Longitude: Expected CqlDouble."
+#endif
+
+--------------------------------------------------------------------------------
+-- Email
+
+data Email = Email
+    { emailLocal  :: !Text
+    , emailDomain :: !Text
+    } deriving (Eq, Ord)
+
+instance Show Email where
+    show = Text.unpack . fromEmail
+
+instance FromByteString Email where
+    parser = parser >>= maybe (fail "Invalid email") return . parseEmail
+
+instance ToByteString Email where
+    builder = builder . fromEmail
+
+instance FromJSON Email where
+    parseJSON = withText "email" $
+          maybe (fail "Invalid email. Expected '<local>@<domain>'.") return
+        . parseEmail
+
+instance ToJSON Email where
+    toJSON = String . fromEmail
+
+fromEmail :: Email -> Text
+fromEmail (Email loc dom) = loc <> "@" <> dom
+
+-- | Parses an email address of the form <local-part>@<domain>.
+parseEmail :: Text -> Maybe Email
+parseEmail t = case Text.split (=='@') t of
+    [local, domain] -> Just $! Email local domain
+    _               -> Nothing
+
+#ifdef WITH_CQL
+instance Cql Email where
+    ctype = Tagged TextColumn
+
+    fromCql (CqlText t) = case parseEmail t of
+        Just  e -> return e
+        Nothing -> fail "fromCql: Invalid email"
+    fromCql _           = fail "fromCql: email: CqlText expected"
+
+    toCql = toCql . fromEmail
 #endif
 
 --------------------------------------------------------------------------------

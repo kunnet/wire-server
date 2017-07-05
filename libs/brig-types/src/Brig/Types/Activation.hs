@@ -11,6 +11,7 @@ import Control.Applicative
 import Data.Aeson
 import Data.ByteString.Conversion
 import Data.Json.Util ((#))
+import Data.Misc (Email)
 import Data.Text.Ascii
 
 -- | An opaque identifier of a 'UserKey' awaiting activation.

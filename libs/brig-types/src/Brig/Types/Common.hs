@@ -16,6 +16,7 @@ import Data.Int (Int32)
 import Data.Json.Util ((#))
 import Data.ISO3166_CountryCodes
 import Data.LanguageCodes
+import Data.Misc (Email)
 import Data.Monoid ((<>))
 import Data.Range
 import Data.Text (Text, toLower)
@@ -82,40 +83,6 @@ newtype PlainTextPassword = PlainTextPassword
 instance FromJSON PlainTextPassword where
     parseJSON x = PlainTextPassword . fromRange
                <$> (parseJSON x :: Json.Parser (Range 6 1024 Text))
-
------------------------------------------------------------------------------
--- Email
-
-data Email = Email
-    { emailLocal  :: !Text
-    , emailDomain :: !Text
-    } deriving (Eq, Ord)
-
-instance Show Email where
-    show = Text.unpack . fromEmail
-
-instance FromByteString Email where
-    parser = parser >>= maybe (fail "Invalid email") return . parseEmail
-
-instance ToByteString Email where
-    builder = builder . fromEmail
-
-instance FromJSON Email where
-    parseJSON = withText "email" $
-          maybe (fail "Invalid email. Expected '<local>@<domain>'.") return
-        . parseEmail
-
-instance ToJSON Email where
-    toJSON = String . fromEmail
-
-fromEmail :: Email -> Text
-fromEmail (Email loc dom) = loc <> "@" <> dom
-
--- | Parses an email address of the form <local-part>@<domain>.
-parseEmail :: Text -> Maybe Email
-parseEmail t = case Text.split (=='@') t of
-    [local, domain] -> Just $! Email local domain
-    _               -> Nothing
 
 -----------------------------------------------------------------------------
 -- Phone
