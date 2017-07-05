@@ -20,6 +20,7 @@ module Data.Misc
       -- * Email
     , Email (..)
     , fromEmail
+    , parseEmail
 
       -- * HttpsUrl
     , HttpsUrl (..)

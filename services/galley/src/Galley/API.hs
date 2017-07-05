@@ -304,15 +304,26 @@ sitemap = do
         .&. capture "tid"
         .&. accept "application" "json"
 
-    -- TODO swagger
+    document "GET" "getBilling" $ do
+        summary "Get billing information for specified team"
+        parameter Path "tid" bytes' $
+            description "Team ID"
+        errorResponse Error.billingNotFound
+        errorResponse (Error.operationDenied GetBilling)
 
-    put "/teams/:tid/billing" (continue updateBilling) $
+    put "/teams/:tid/billing" (continue setBilling) $
         zauthUserId
         .&. capture "tid"
         .&. request
         .&. accept "application" "json"
 
-    -- TODO swagger
+    document "PUT" "setBilling" $ do
+        summary "Create or update billing information for specified team"
+        parameter Path "tid" bytes' $
+            description "Team ID"
+        body (ref TeamsModel.billing) $
+            description "JSON body"
+        errorResponse (Error.operationDenied SetBilling)
 
    --
 

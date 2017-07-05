@@ -84,6 +84,9 @@ module Galley.Types.Teams
     , iconUpdate
     , iconKeyUpdate
 
+    , BillingData (..)
+    , bdEmail
+
     ) where
 
 import Control.Lens (makeLenses, (^.))
@@ -95,12 +98,12 @@ import Data.Id (TeamId, ConvId, UserId)
 import Data.Json.Util
 import Data.Monoid
 import Data.Maybe (mapMaybe, isNothing)
+import Data.Misc (Email)
 import Data.Range
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Word
-
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
@@ -211,6 +214,10 @@ newtype NewTeamMember = NewTeamMember
     { _ntmNewTeamMember :: TeamMember
     }
 
+newtype BillingData = BillingData
+    { _bdEmail :: Email
+    } deriving (Eq, Show)
+
 newTeam :: TeamId -> UserId -> Text -> Text -> TeamBinding -> Team
 newTeam tid uid nme ico bnd = Team tid uid nme ico Nothing bnd
 
@@ -252,6 +259,7 @@ makeLenses ''NewTeam
 makeLenses ''NewTeamMember
 makeLenses ''Event
 makeLenses ''TeamUpdateData
+makeLenses ''BillingData
 
 newPermissions :: Set Perm -> Set Perm -> Maybe Permissions
 newPermissions a b
@@ -524,3 +532,12 @@ instance FromJSON TeamUpdateData where
         when (isNothing (_nameUpdate x) && isNothing (_iconUpdate x) && isNothing (_iconKeyUpdate x)) $
             fail "no update data specified"
         pure x
+
+instance ToJSON BillingData where
+    toJSON b = object
+        $ "email"  .= _bdEmail b
+        # []
+
+instance FromJSON BillingData where
+    parseJSON = withObject "billing data" $ \o ->
+        BillingData <$> o .: "email"

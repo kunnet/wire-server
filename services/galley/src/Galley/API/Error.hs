@@ -79,3 +79,6 @@ noAddToBinding = Error status403 "binding-team" "Cannot add users to binding tea
 
 deleteQueueFull :: Error
 deleteQueueFull = Error status503 "queue-full" "The delete queue is full. No further delete requests can be processed at the moment."
+
+billingNotFound :: Error
+billingNotFound = Error status404 "no-billing" "billing information not found"

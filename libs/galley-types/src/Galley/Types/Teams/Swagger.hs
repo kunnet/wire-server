@@ -24,6 +24,7 @@ teamsModels =
     , member
     , conversation
     , update
+    , billing
     ]
 
 team :: Model
@@ -181,3 +182,8 @@ update = defineModel "TeamUpdateData" $ do
     property "icon_key" string' $ do
         description "new icon asset key"
         optional
+
+billing :: Model
+billing = defineModel "Billing"  $ do
+    description "Billing information"
+    property "email" string' $ description "billing email"

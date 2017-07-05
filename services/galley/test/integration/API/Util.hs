@@ -18,6 +18,7 @@ import Data.Id
 import Data.Int
 import Data.List1 as List1
 import Data.Maybe
+import Data.Misc
 import Data.Monoid
 import Data.ProtocolBuffers (encodeMessage)
 import Data.Range
@@ -121,6 +122,22 @@ createTeamConv g u tinfo us name = do
               . json conv
               ) <!! const 201 === statusCode
     fromBS (getHeader' "Location" r)
+
+getBilling :: Galley -> TeamId -> UserId -> Http BillingData
+getBilling g tid uid = do
+    r <- get  ( g
+              . zUser uid
+              . zConn "conn"
+              . zType "access"
+              . paths ["teams", toByteString' tid, "billing"]
+              ) <!! const 200 === statusCode
+    pure (fromJust (decodeBody r))
+
+setBilling :: Galley -> TeamId -> UserId -> BillingData -> Http ResponseLBS
+setBilling g tid uid b = put $ g
+              . zUser uid . zConn "conn" . zType "access"
+              . paths ["teams", toByteString' tid, "billing"]
+              . json b
 
 postConv :: Galley -> UserId -> [UserId] -> Maybe Text -> [Access] -> Http ResponseLBS
 postConv g u us name a = do
@@ -392,14 +409,10 @@ randomUsers b n = replicateM n (randomUser b)
 
 randomUser :: Brig -> Http UserId
 randomUser brig = do
-    e <- liftIO mkEmail
+    e <- liftIO randomEmail
     let p = object [ "name" .= fromEmail e, "email" .= fromEmail e, "password" .= ("secret" :: Text) ]
     r <- post (brig . path "/i/users" . json p) <!! const 201 === statusCode
     fromBS (getHeader' "Location" r)
-  where
-    mkEmail = do
-        uid <- nextRandom
-        return $ Email ("success+" <> UUID.toText uid) "simulator.amazonses.com"
 
 randomClient :: Brig -> UserId -> LastPrekey -> Http ClientId
 randomClient brig usr lk = do
@@ -491,3 +504,8 @@ memberUpdate = MemberUpdate Nothing Nothing Nothing Nothing Nothing Nothing
 
 genRandom :: (Q.Arbitrary a, MonadIO m) => m a
 genRandom = liftIO . Q.generate $ Q.arbitrary
+
+randomEmail :: MonadIO m => m Email
+randomEmail = do
+    uid <- liftIO nextRandom
+    return $ Email ("success+" <> UUID.toText uid) "simulator.amazonses.com"
