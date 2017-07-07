@@ -139,6 +139,8 @@ sitemap = do
         zauthUserId
         .&. zauthConnId
         .&. capture "id"
+        .&. request
+        .&. opt (contentType "application" "json")
         .&. accept "application" "json"
 
     document "DELETE" "deleteTeam" $ do
@@ -213,8 +215,10 @@ sitemap = do
         .&. zauthConnId
         .&. capture "tid"
         .&. capture "uid"
+        .&. request
+        .&. opt (contentType "application" "json")
         .&. accept "application" "json"
-
+        
     document "DELETE" "deleteTeamMember" $ do
         summary "Remove an existing team member"
         parameter Path "tid" bytes' $

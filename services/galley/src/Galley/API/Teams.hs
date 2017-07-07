@@ -111,12 +111,17 @@ updateTeam (zusr::: zcon ::: tid ::: req ::: _) = do
     push1 $ newPush1 zusr (TeamEvent e) r & pushConn .~ Just zcon
     pure empty
 
-deleteTeam :: UserId ::: ConnId ::: TeamId ::: JSON -> Galley Response
-deleteTeam (zusr::: zcon ::: tid ::: _) = do
-    alive <- Data.isTeamAlive tid
-    membs <- Data.teamMembers tid
-    when alive $
-        void $ permissionCheck zusr DeleteTeam membs
+deleteTeam :: UserId ::: ConnId ::: TeamId ::: Request ::: Maybe JSON ::: JSON -> Galley Response
+deleteTeam (zusr::: zcon ::: tid ::: req ::: _ ::: _) = do
+    team <- Data.team tid
+    case team of
+        Just t | Data.tdDeleted t == False -> do
+            membs <- Data.teamMembers tid
+            void $ permissionCheck zusr DeleteTeam membs
+            when ((view teamBinding . Data.tdTeam <$> team) == Just Binding) $ do
+                body <- fromBody req invalidPayload
+                void $ ensureReAuthorised zusr (body^.tdAuthPassword)
+        _ -> return ()
     q  <- view deleteQueue
     ok <- Q.tryPush q (TeamItem tid zusr (Just zcon))
     if ok then
@@ -136,8 +141,9 @@ uncheckedDeleteTeam zusr zcon tid = do
         let e = newEvent TeamDelete tid now
         let r = list1 (userRecipient zusr) (membersToRecipients (Just zusr) membs)
         pushSome ((newPush1 zusr (TeamEvent e) r & pushConn .~ zcon) : events)
+        when ((view teamBinding . Data.tdTeam <$> team) == Just Binding) $
+            deleteUsers (map (view userId) membs)
         Data.deleteTeam tid
-        pure ()
   where
     pushEvents now membs c pp = do
         mm <- flip nonTeamMembers membs <$> Data.members (c^.conversationId)
@@ -206,11 +212,17 @@ updateTeamMember (zusr::: zcon ::: tid ::: req ::: _) = do
     push1 $ newPush1 zusr (TeamEvent e) r & pushConn .~ Just zcon
     pure empty
 
-deleteTeamMember :: UserId ::: ConnId ::: TeamId ::: UserId ::: JSON -> Galley Response
-deleteTeamMember (zusr::: zcon ::: tid ::: remove ::: _) = do
+deleteTeamMember :: UserId ::: ConnId ::: TeamId ::: UserId ::: Request ::: Maybe JSON ::: JSON -> Galley Response
+deleteTeamMember (zusr::: zcon ::: tid ::: remove ::: req ::: _ ::: _) = do
     mems <- Data.teamMembers tid
     void $ permissionCheck zusr RemoveTeamMember mems
-    uncheckedRemoveTeamMember zusr (Just zcon) tid remove mems
+    team <- Data.tdTeam <$> (Data.team tid >>= ifNothing teamNotFound)
+    if (team^.teamBinding == Binding) then do
+        body <- fromBody req invalidPayload
+        void $ ensureReAuthorised zusr (body^.tmdAuthPassword)
+        deleteUsers [remove]
+    else
+        uncheckedRemoveTeamMember zusr (Just zcon) tid remove mems
     pure empty
 
 -- This function is "unchecked" because it does not validate that the user has the `RemoveTeamMember` permission.

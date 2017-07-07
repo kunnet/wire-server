@@ -6,7 +6,7 @@
 module Galley.API.Util where
 
 import Brig.Types (Relation (..))
-import Brig.Types.Intra (ConnectionStatus (..))
+import Brig.Types.Intra (ConnectionStatus (..), ReAuthUser (..))
 import Control.Lens (view, (&), (.~))
 import Control.Monad
 import Control.Monad.Catch
@@ -14,7 +14,9 @@ import Control.Monad.IO.Class
 import Data.ByteString.Conversion
 import Data.Id
 import Data.Foldable (find, for_, toList)
+import Data.List1 (list1)
 import Data.Maybe (isJust)
+import Data.Misc (PlainTextPassword (..))
 import Data.Range
 import Data.Semigroup ((<>))
 import Data.Time
@@ -52,6 +54,16 @@ ensureConnected u uids = do
            csFrom   cs == u1
         && csTo     cs == u2
         && csStatus cs == Accepted
+
+ensureReAuthorised :: UserId -> Maybe PlainTextPassword -> Galley ()
+ensureReAuthorised u secret = do
+    reAuthed <- reAuthUser u (ReAuthUser secret)
+    unless reAuthed $
+        throwM reAuthFailed
+
+deleteUsers :: [UserId] -> Galley ()
+deleteUsers []     = pure ()
+deleteUsers (x:xs) = rmUsers (list1 x xs)
 
 sameTeam :: [UserId] -> [TeamMember] -> [UserId]
 sameTeam uids tmms = Set.toList $

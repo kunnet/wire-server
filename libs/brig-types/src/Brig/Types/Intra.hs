@@ -11,6 +11,7 @@ import Brig.Types.User
 import Control.Monad (mzero)
 import Data.Aeson
 import Data.Id (UserId)
+import Data.Misc (PlainTextPassword (..))
 import Data.Set (Set)
 
 import qualified Data.HashMap.Strict as M
@@ -93,13 +94,6 @@ instance ToJSON UserAccount where
         in Object $ M.insert "status" (toJSON s) o
 
 -------------------------------------------------------------------------------
--- UserIds
-
-newtype UserIds = UserIds
-    { userIds :: [UserId]
-    } deriving (Eq, Show, ToJSON, FromJSON)
-
--------------------------------------------------------------------------------
 -- AutoConnect
 
 -- | List of users to establish a 2-way accepted connection for a given user
@@ -108,10 +102,26 @@ data AutoConnect = AutoConnect
     } deriving (Eq, Show)
 
 instance FromJSON AutoConnect where
-    parseJSON = withObject "AutoConnect" $ \o ->
+    parseJSON = withObject "auto-connect" $ \o ->
         AutoConnect <$> o .: "users"
 
 instance ToJSON AutoConnect where
     toJSON ac = object
         [ "users" .= acUsrs ac
+        ]
+
+-------------------------------------------------------------------------------
+-- ReAuthUser
+
+-- | Certain operations might require a reauthentication of the user
+newtype ReAuthUser = ReAuthUser
+    { reAuthPassword :: Maybe PlainTextPassword }
+
+instance FromJSON ReAuthUser where
+    parseJSON = withObject "reauth-user" $ \o ->
+        ReAuthUser <$> o .:? "password"
+
+instance ToJSON ReAuthUser where
+    toJSON ru = object
+        [ "password" .= reAuthPassword ru
         ]
