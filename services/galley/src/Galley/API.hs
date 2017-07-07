@@ -147,8 +147,10 @@ sitemap = do
         summary "Delete a team"
         parameter Path "id" bytes' $
             description "Team ID"
-        body (ref TeamsModel.teamDelete) $
-            description "JSON body"
+        body (ref TeamsModel.teamDelete) $ do
+            optional
+            description "JSON body, required only for binding teams \
+                        "if the user has a password. "
         response 202 "Team is scheduled for removal" end
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied DeleteTeam)
@@ -229,8 +231,10 @@ sitemap = do
             description "Team ID"
         parameter Path "uid" bytes' $
             description "User ID"
-        body (ref TeamsModel.teamMemberDelete) $
-            description "JSON body"
+        body (ref TeamsModel.teamMemberDelete) $ do
+            optional
+            description "JSON body, required only for binding teams \
+                        "if the user has a password. "
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied RemoveTeamMember)
         errorResponse Error.reAuthFailed
