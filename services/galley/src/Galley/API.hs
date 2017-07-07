@@ -150,7 +150,7 @@ sitemap = do
         body (ref TeamsModel.teamDelete) $ do
             optional
             description "JSON body, required only for binding teams \
-                        "if the user has a password. "
+                        \if the user has a password. "
         response 202 "Team is scheduled for removal" end
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied DeleteTeam)
@@ -234,7 +234,7 @@ sitemap = do
         body (ref TeamsModel.teamMemberDelete) $ do
             optional
             description "JSON body, required only for binding teams \
-                        "if the user has a password. "
+                        \if the user has a password. "
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied RemoveTeamMember)
         errorResponse Error.reAuthFailed
