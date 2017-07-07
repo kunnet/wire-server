@@ -86,8 +86,10 @@ module Galley.Types.Teams
 
     , TeamMemberDeleteData
     , tmdAuthPassword
+    , newTeamMemberDeleteData
     , TeamDeleteData
     , tdAuthPassword
+    , newTeamDeleteData
 
     ) where
 
@@ -254,6 +256,12 @@ newEvent typ tid tme = Event typ tid tme Nothing
 
 newTeamUpdateData :: TeamUpdateData
 newTeamUpdateData = TeamUpdateData Nothing Nothing Nothing
+
+newTeamMemberDeleteData :: TeamMemberDeleteData
+newTeamMemberDeleteData = TeamMemberDeleteData Nothing
+
+newTeamDeleteData :: TeamDeleteData
+newTeamDeleteData = TeamDeleteData Nothing
 
 makeLenses ''Team
 makeLenses ''TeamList

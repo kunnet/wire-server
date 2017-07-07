@@ -13,6 +13,7 @@ import Data.Aeson (Value (Null))
 import Data.ByteString.Conversion
 import Data.Foldable (for_)
 import Data.List1
+import Data.Misc (PlainTextPassword (..))
 import Data.Monoid
 import Data.Range
 import Galley.Types hiding (EventType (..), EventData (..), MemberUpdate (..))
@@ -38,10 +39,12 @@ tests g b c m = testGroup "Teams API"
     , test m "add new team member binding teams" (testAddTeamMemberCheckBound g b)
     , test m "add new team member internal" (testAddTeamMemberInternal g b c)
     , test m "remove team member" (testRemoveTeamMember g b c)
+    , test m "remove team member (binding)" (testRemoveBindingTeamMember g b)
     , test m "add team conversation" (testAddTeamConv g b c)
     , test m "add managed team conversation ignores given users" (testAddTeamConvWithUsers g b)
     , test m "add team member to conversation without connection" (testAddTeamMemberToConv g b)
     , test m "delete team" (testDeleteTeam g b c)
+    , test m "delete team (binding)" (testDeleteBindingTeam g b c)
     , test m "delete team conversation" (testDeleteTeamConv g b c)
     , test m "update team data" (testUpdateTeam g b c)
     , test m "update team member" (testUpdateTeamMember g b c)
@@ -205,6 +208,9 @@ testRemoveTeamMember g b c = do
                . zConn "conn"
                ) !!! const 200 === statusCode
 
+        -- Ensure that `mem1` is still a user (tid is not a binding team)
+        Util.ensureDeletedState b False owner (mem1^.userId)
+
         liftIO . void $ mapConcurrently (checkLeaveEvent tid (mem1^.userId)) [wsOwner, wsMem1, wsMem2]
         checkConvMemberLeaveEvent cid2 (mem1^.userId) wsMext
         WS.assertNoEvent timeout ws
@@ -224,6 +230,38 @@ testRemoveTeamMember g b c = do
         case evtData e of
             Just (Conv.EdMembers mm) -> mm @?= Conv.Members [usr]
             other                    -> assertFailure $ "Unexpected event data: " <> show other
+
+testRemoveBindingTeamMember :: Galley -> Brig -> Http ()
+testRemoveBindingTeamMember g b = do
+    owner <- Util.randomUser b
+    tid   <- Util.createTeamInternal g "foo" owner
+
+    let p1 = Util.symmPermissions [AddConversationMember]
+    mem1 <- flip newTeamMember p1 <$> Util.randomUser b
+    Util.addTeamMemberInternal g tid mem1
+
+    delete ( g
+           . paths ["teams", toByteString' tid, "members", toByteString' (mem1^.userId)]
+           . zUser owner
+           . zConn "conn"
+           . json (newTeamMemberDeleteData & tmdAuthPassword .~ (Just (PlainTextPassword "wrong passwd")))
+           ) !!! do
+        const 403 === statusCode
+        const "access-denied" === (Error.label . Util.decodeBody' "error label")
+
+    -- Mem1 is still part of Wire
+    Util.ensureDeletedState b False owner (mem1^.userId)
+
+    delete ( g
+           . paths ["teams", toByteString' tid, "members", toByteString' (mem1^.userId)]
+           . zUser owner
+           . zConn "conn"
+           . json (newTeamMemberDeleteData & tmdAuthPassword .~ (Just (PlainTextPassword Util.defPassword)))
+           ) !!!
+        const 200 === statusCode
+
+    -- Mem1 is gone from Wire
+    Util.ensureDeletedState b True owner (mem1^.userId)
 
 testAddTeamConv :: Galley -> Brig -> Cannon -> Http ()
 testAddTeamConv g b c = do
@@ -299,7 +337,6 @@ testAddTeamConv g b c = do
         e^.eventTeam @?= tid
         e^.eventData @?= Just (EdMemberJoin uid)
 
-
 testAddTeamConvWithUsers :: Galley -> Brig -> Http ()
 testAddTeamConvWithUsers g b = do
     owner  <- Util.randomUser b
@@ -368,7 +405,7 @@ testDeleteTeam g b c = do
             const 202 === statusCode
         checkTeamDeleteEvent tid wsOwner
         checkTeamDeleteEvent tid wsMember
-        checkConvDeletevent  cid1 wsExtern
+        checkConvDeleteEvent  cid1 wsExtern
         WS.assertNoEvent timeout [wsOwner, wsExtern, wsMember]
 
     get (g . paths ["teams", toByteString' tid] . zUser owner) !!!
@@ -380,7 +417,9 @@ testDeleteTeam g b c = do
     get (g . paths ["teams", toByteString' tid, "conversations"] . zUser owner) !!!
         const 403 === statusCode
 
-    for_ [owner, extern, member^.userId] $ \u ->
+    for_ [owner, extern, member^.userId] $ \u -> do
+        -- Ensure no user got deleted
+        Util.ensureDeletedState b False owner u
         for_ [cid1, cid2] $ \x -> do
             Util.getConv g u x !!! const 404 === statusCode
             Util.getSelfMember g u x !!! do
@@ -394,12 +433,45 @@ testDeleteTeam g b c = do
         e^.eventTeam @?= tid
         e^.eventData @?= Nothing
 
-    checkConvDeletevent cid w = WS.assertMatch_ timeout w $ \notif -> do
+    checkConvDeleteEvent cid w = WS.assertMatch_ timeout w $ \notif -> do
         ntfTransient notif @?= False
         let e = List1.head (WS.unpackPayload notif)
         evtType e @?= Conv.ConvDelete
         evtConv e @?= cid
         evtData e @?= Nothing
+
+testDeleteBindingTeam :: Galley -> Brig -> Cannon -> Http ()
+testDeleteBindingTeam g b c = do
+    owner <- Util.randomUser b
+    tid   <- Util.createTeamInternal g "foo" owner
+    let p1 = Util.symmPermissions [AddConversationMember]
+    mem1 <- flip newTeamMember p1 <$> Util.randomUser b
+    Util.addTeamMemberInternal g tid mem1
+
+    extern <- Util.randomUser b
+    externConnected <- Util.randomUser b
+    Util.connectUsers b owner (singleton externConnected)
+
+    void $ WS.bracketR c extern $ \wsExtern -> do
+        delete ( g
+               . paths ["teams", toByteString' tid]
+               . zUser owner
+               . zConn "conn"
+               . json (newTeamDeleteData & tdAuthPassword .~ (Just (PlainTextPassword "wrong passwd")))
+               ) !!! do
+            const 403 === statusCode
+            const "access-denied" === (Error.label . Util.decodeBody' "error label")
+
+        delete ( g
+               . paths ["teams", toByteString' tid]
+               . zUser owner
+               . zConn "conn"
+               . json (newTeamMemberDeleteData & tmdAuthPassword .~ (Just (PlainTextPassword Util.defPassword)))
+               ) !!!
+            const 202 === statusCode
+
+        WS.assertNoEvent timeout [wsExtern]
+        mapM (Util.ensureDeletedState b True extern) [owner, (mem1^.userId)]
 
 testDeleteTeamConv :: Galley -> Brig -> Cannon -> Http ()
 testDeleteTeamConv g b c = do

@@ -24,6 +24,8 @@ teamsModels =
     , member
     , conversation
     , update
+    , teamMemberDelete
+    , teamDelete
     ]
 
 team :: Model
@@ -180,4 +182,18 @@ update = defineModel "TeamUpdateData" $ do
         optional
     property "icon_key" string' $ do
         description "new icon asset key"
+        optional
+
+teamDelete :: Model
+teamDelete = defineModel "teamDeleteData" $ do
+    description "Data for a team deletion request in case of binding teams."
+    property "password" string' $ do
+        description "The account password to authorise the deletion, if there is one."
+        optional
+
+teamMemberDelete :: Model
+teamMemberDelete = defineModel "teamDeleteData" $ do
+    description "Data for a team member deletion request in case of binding teams."
+    property "password" string' $ do
+        description "The account password to authorise the deletion, if there is one."
         optional

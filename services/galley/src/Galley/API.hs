@@ -147,10 +147,14 @@ sitemap = do
         summary "Delete a team"
         parameter Path "id" bytes' $
             description "Team ID"
+        body (ref TeamsModel.teamDelete) $
+            description "JSON body"
         response 202 "Team is scheduled for removal" end
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied DeleteTeam)
         errorResponse Error.deleteQueueFull
+        errorResponse Error.reAuthFailed
+
 
     --
 
@@ -218,15 +222,18 @@ sitemap = do
         .&. request
         .&. opt (contentType "application" "json")
         .&. accept "application" "json"
-        
+
     document "DELETE" "deleteTeamMember" $ do
         summary "Remove an existing team member"
         parameter Path "tid" bytes' $
             description "Team ID"
         parameter Path "uid" bytes' $
             description "User ID"
+        body (ref TeamsModel.teamMemberDelete) $
+            description "JSON body"
         errorResponse Error.noTeamMember
         errorResponse (Error.operationDenied RemoveTeamMember)
+        errorResponse Error.reAuthFailed
 
     --
 
